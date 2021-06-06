@@ -2,7 +2,7 @@
 ------------------
 
 <p align="center">
-    <img src="/Documentation/snesColors.png">
+    <img src="/Documents/snesColors.png">
 </p>
 
 Making an SNES game for the 30th anniversary of the NA launch of the SNES.
