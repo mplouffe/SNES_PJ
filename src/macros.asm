@@ -37,3 +37,23 @@
     rep #$10
 .endmacro
 
+
+; memcpy
+; block move
+; for WRAM to WRAM data transfers
+; (can't be done with DMA)
+.macro BLOCK_MOVE length, src_addr, dst_addr
+; mnv changes the data bank register, need to prserve it
+    phb
+.if .asize = 8
+    rep #$30
+.elseif .isize = 8
+    rep #$30
+.endif
+    lda #(length-1)
+    ldx #.loword(src_addr)
+    ldy #.loword(dst_addr)
+    ; mvn scr_bank, dst_bank
+    .byte $54, ^dst_addr, ^src_addr
+    plb
+.endmacro
