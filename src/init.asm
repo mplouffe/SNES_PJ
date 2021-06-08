@@ -12,6 +12,7 @@ NMI:
     pha
     lda $4210   ; it is required to read this register
                 ; in the NMI handler
+    inc in_nmi
     pla
     rti
 IRQ:
@@ -40,6 +41,8 @@ RESET:
     sta $00
     stz $00
     stz $02
+    stz $04
+    stz $06
     stz $08
     stz $0A
     stz $0C

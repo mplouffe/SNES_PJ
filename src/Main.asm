@@ -1,10 +1,13 @@
 .p816
 .smart
 
-.include "define.asm"
-.include "macros.asm"
-.include "init.asm"
-.include "unrle.asm"
+.segment "ZEROPAGE"
+
+pad1: .res 2
+pad1_new: .res 2
+pad2: .res 2
+pad2_new: .res 2
+in_nmi: .res 2
 
 
 .segment "BSS"
@@ -13,6 +16,13 @@ PAL_BUFFER: .res 512
 
 OAM_BUFFER: .res 512 ; low table
 OAM_BUFFER2: .res 32 ; high table
+
+
+.include "define.asm"
+.include "macros.asm"
+.include "init.asm"
+.include "unrle.asm"
+
 
 .segment "CODE"
 
@@ -57,20 +67,22 @@ main:
 
 
 ; DMA from OAM_BUFFER to the OAM RAM
-  ldx #$0000
-  stx oam_addr_L    ; $2102 & 2103
-  
-  stz $4300         ; transfer mode 0 = 1 register write once
-  lda #4            ; $2104 oam data
-  sta $4301         ; destination, oam data
-  ldx#.loword(OAM_BUFFER)
-  stx $4302         ; source
-  lda #^OAM_BUFFER
-  sta $4304         ; bank
-  ldx #544
-  stx $4305         ; length
-  lda #1
-  sta $420b         ; start dma, channel 0
+  jsr dma_oam
+
+;  ldx #$0000
+;  stx oam_addr_L    ; $2102 & 2103
+;  
+;  stz $4300         ; transfer mode 0 = 1 register write once
+;  lda #4            ; $2104 oam data
+;  sta $4301         ; destination, oam data
+;  ldx#.loword(OAM_BUFFER)
+;  stx $4302         ; source
+;  lda #^OAM_BUFFER
+;  sta $4304         ; bank
+;  ldx #544
+;  stx $4305         ; length
+;  lda #1
+;  sta $420b         ; start dma, channel 0
 
 
 ; DMA from Spr_Tiles to VRAM 
@@ -109,147 +121,68 @@ main:
 
 
   
-; DMA from BG12Tiles to VRAM
-; - set target address for transfer
-  ldx #$0000
-  stx vram_addr ; set an address in the vram of $0000
-; - set transfer mode settings
-  lda #1
-  sta $4300   ; transfer mode, 2 registers 1 write
-              ; $2118 and $2119 are a pair Low/High
-  lda #$18    ; $2118
-  sta $4301   ; destination, vram data
 
-; - decompress first
-  AXY16
-  lda #.loword(BG12Tiles)
-  ldx #^BG12Tiles
-  jsl unrle   ; unpacks to 7f0000 UNPACK_ADR
-  ; returns y = length
-  ; ax = unpack address (x is bank)
-; - transfer decompressed data
-  sta $4302   ; source
-  txa
-  A8
-  sta $4304   ; bank
-  sty $4305   ; length
-  lda #1
-  sta $420b   ; start dma, channel 0
-
-; DMA from BG3Tiles to VRAM
-; - set target address for transfer
-  ldx #$3000
-  stx vram_addr ; set an address in the vram of $6000
-; - transfer mode settings arleady set from previous transfer
-
-; - decompress first
-  AXY16
-  lda#.loword(BG34Tiles)
-  ldx #^BG34Tiles
-  jsl unrle   ; unpacks to 7f0000 UNPACK_ADR
-; - transfer uncompressed data
-  sta $4302   ; source
-  txa
-  A8
-  sta $4304   ; bank
-  sty $4305   ; length
-  lda #1
-  sta $420b   ; start dma, channel 0
-
-; DMA from BG1Tilemap to VRAM
-; - set target address for transfer
-  ldx #$6000
-  stx vram_addr ; set an address in the vram of $9000
-; - transfer mode settings already set from previous transfer
-
-; - decompress first
-  AXY16
-  lda#.loword(BG1Tilemap)
-  ldx#^BG1Tilemap
-  jsl unrle   ; unpacks to 7f0000 UNPACK_ADR
-; - transfer uncompressed data
-  sta $4302   ; source
-  txa
-  A8
-  sta $4304   ; bank
-  sty $4305   ; length
-  lda #1
-  sta $420b   ; start dma, channel 0
-
-; DMA from BG2Tilemap to VRAM
-; - set target address for transfer
-  ldx #$6800
-  stx vram_addr ; set an address in the vram of $9800
-; - transfer mode settings already set from previous transfer
-
-; - decompress first
-  AXY16
-  lda#.loword(BG2Tilemap)
-  ldx#^BG2Tilemap
-  jsl unrle    ; unpacks to 7f0000 UNPACK_ADR
-; - transfer uncompressed data
-  sta $4302   ; source
-  txa
-  A8
-  sta $4304   ; bank
-  sty $4305   ; length
-  lda #1
-  sta $420b   ; start dma, channel 0
-
-; DMA from BG3Tilemap to VRAM
-; - set target address for transfer
-  ldx #$7000
-  stx vram_addr ; set an address int he vram of $a000
-; - transfer mode settings already set form previous transfer
-
-; - decompress first
-  AXY16
-  lda#.loword(BG3Tilemap)
-  ldx#^BG3Tilemap
-  jsl unrle   ; unpacks to 7f0000 UNPACK_ADR
-; - transfer uncompressed data
-  sta $4302   ; source
-  txa
-  A8
-  sta $4304   ; bank
-  sty $4305   ; length
-  lda #1
-  sta $420b   ; start dma, channel 0
-
-
-; a is still 8 bit
-  lda #1|BG3_TOP    ; mode 1, tilesize 8x8 all, layer 3 on top
-  sta bg_size_mode  ; $2105
-
-; 210b = tilesets for bg 1 and bg 2
-; (210c for bg 3 and bg 4)
-; setps of $1000 -321-321... bg2 bg1
-  stz bg12_tiles    ; #210b BG 1 and 2 TILES at address $0000
-  lda #$03
-  sta bg34_tiles    ; $210c BG 3 TILES at address $3000
-
-  ; 2107 map address bg1, steps of $400, but -54321yx
-  ; y/x = map size... 0,0 = 32x32 tiles
-  ; $6000 / $100 = $60
-  lda #$60        ; VRAM address of $6000
-  sta tilemap1    ; $2107
-
-  lda #$68        ; VRAM address of $6800
-  sta tilemap2
-
-  lda #$70        ; VRAM address of $7000
-  sta tilemap3
-
-  lda #ALL_ON_SCREEN    ; show only sprites
+  lda #SPR_ON     ; show only sprites
   sta main_screen ; #212c
 
-
+  lda #NMI_ON|AUTO_JOY_ON
+  sta $4200
 
 ; turn screen on // end of forced blank
   lda #FULL_BRIGHT ; $0f = turn the screen on, full brightness
   sta fb_bright ; $2100
 
 InfiniteLoop:
+  jsr wait_nmi      ; wait for beginning of v-blank
+  jsr dma_oam       ; copy the OAM_BUFFER to the OAM
+  jsr pad_poll      ; read controllers
+
+  AXY16
+
+  lda pad1
+  and #KEY_LEFT
+  beq @not_left
+@left:
+  A8
+  dec OAM_BUFFER
+  dec OAM_BUFFER+4
+  dec OAM_BUFFER+8
+  A16
+@not_left:
+
+  lda pad1
+  and #KEY_RIGHT
+  beq @not_right
+@right:
+  A8
+  inc OAM_BUFFER    ; increase the x values
+  inc OAM_BUFFER+4
+  inc OAM_BUFFER+8
+  A16
+@not_right:
+
+  lda pad1
+  and #KEY_UP
+  beq @not_up
+@up:
+  A8
+  dec OAM_BUFFER+1  ; decrease the Y values
+  dec OAM_BUFFER+5
+  dec OAM_BUFFER+9
+  A16
+@not_up:
+
+  lda pad1
+  and #KEY_DOWN
+  beq @not_down
+@down:
+  A8
+  inc OAM_BUFFER+1  ; increase the Y values
+  inc OAM_BUFFER+5
+  INC OAM_BUFFER+9
+  A16
+@not_down:
+  A8
   jmp InfiniteLoop
 
 
@@ -275,7 +208,73 @@ clear_sp_buffer:
   rts
 
 
+wait_nmi:
+.a8
+.i16
+; should work fine regardless of size of A
+  lda in_nmi    ; load A register with previous in_nmi
+@check_again:
+  WAI           ; wait for an iterrupt
+  cmp in_nmi    ; compare A to current in_nmi
+                ; wait for it to change
+                ; to ensure it was an nmi interrupt
+  beq @check_again
+  rts
 
+
+dma_oam:
+.a8
+.i16
+  php
+  A8
+  XY16
+  ldx #$0000
+  stx oam_addr_L    ; $2102 & 2103
+
+  stx $4300         ; transfer mode 0 = 1 register write once
+  lda #4            ; $2104 oam data
+  sta $4301         ; destination, oam data
+  ldx #.loword(OAM_BUFFER)
+  stx $4302         ; source
+  lda #^OAM_BUFFER
+  sta $4304         ; bank
+  ldx #544
+  stx $4305         ; length
+  lda #1
+  sta $420b         ; start dma, channel 0
+  plp
+  rts
+
+
+pad_poll:
+.a8
+.i16
+  php
+  A8
+@wait:
+; wait till auto-controller reads are done
+  lda $4212
+  lsr a
+  bcs @wait
+
+  A16
+  lda pad1
+  sta temp1       ; save last frame
+  lda $4218       ; controller 1
+  sta pad1
+  eor temp1
+  and pad1
+  sta pad1_new
+
+  lda pad2
+  sta temp1       ; save last frame
+  lda $421a       ; controller 2
+  sta pad2
+  eor temp1
+  and pad2
+  sta pad2_new
+  plp
+  rts
 
 
 .include "header.asm"
