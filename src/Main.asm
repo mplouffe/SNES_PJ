@@ -147,6 +147,8 @@ InfiniteLoop:
   dec OAM_BUFFER
   dec OAM_BUFFER+4
   dec OAM_BUFFER+8
+  dec OAM_BUFFER+12
+  dec OAM_BUFFER+16
   A16
 @not_left:
 
@@ -158,6 +160,8 @@ InfiniteLoop:
   inc OAM_BUFFER    ; increase the x values
   inc OAM_BUFFER+4
   inc OAM_BUFFER+8
+  inc OAM_BUFFER+12
+  inc OAM_BUFFER+16
   A16
 @not_right:
 
@@ -179,7 +183,7 @@ InfiniteLoop:
   A8
   inc OAM_BUFFER+1  ; increase the Y values
   inc OAM_BUFFER+5
-  INC OAM_BUFFER+9
+  inc OAM_BUFFER+9
   A16
 @not_down:
   A8
