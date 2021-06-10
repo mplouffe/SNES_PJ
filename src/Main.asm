@@ -584,7 +584,7 @@ END_BG12Tiles:
 ;END_BG34Tiles:
 
 Spr_Tiles:
-.incbin "sprites.chr"
+.incbin "sprites/sprites.chr"
 End_Spr_Tiles:
 
 .segment "RODATA2"
