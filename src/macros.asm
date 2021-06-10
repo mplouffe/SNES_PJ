@@ -57,3 +57,24 @@
     .byte $54, ^dst_addr, ^src_addr
     plb
 .endmacro
+
+.macro DMA_VRAM length, src_addr, dst_addr
+; dst is address in the VRAM
+; a should be 8 bit, xy should be 16 bit
+    ldx #dst_addr
+    stx vram_addr
+
+    lda #1
+    sta $4300               ; transfer mode, 2 registers 1 write
+                            ; $2118 and $2119 are a pair Low/High
+    lda #$18                ; $2118
+    sta $4301               ; destination, vram data
+    ldx #.loword(src_addr)
+    stx $4302               ; source
+    lda #^src_addr
+    sta $4304               ; bank
+    ldx #length
+    stx $4305               ; length
+    lda #1
+    sta $420b;
+.endmacro

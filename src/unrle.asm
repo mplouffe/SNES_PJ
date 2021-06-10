@@ -3,14 +3,6 @@
 
 UNPACK_ADR = $7f0000
 
-.segment "ZEROPAGE"
-temp1: .res 2
-temp2: .res 2
-temp3: .res 2
-temp4: .res 2
-temp5: .res 2
-temp6: .res 2
-
 .segment "CODE"
 
 ; in axy16
